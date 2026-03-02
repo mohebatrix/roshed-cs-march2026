@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ROSHED: Magnetic Messaging</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* CORE SETUP & STRICT PALETTE */
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg-color: #fff5f5; /* Light pink background */
+            --primary: #638c80; /* Sage Green */
+            --secondary: #d1d6d2; /* Light grey/green track color */
+            --text-dark: #1a2622; /* Very dark green/grey for text */
+            --white: #ffffff;
+            --slide-bg: #fcfcfc;
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            background-color: #2c3e38; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Lato', sans-serif;
+            color: var(--text-dark);
+            overflow: hidden;
+        }
+
+        /* PRESENTATION VIEWER */
+        .deck-container {
+            position: relative;
+            width: 1280px;
+            height: 720px;
+            background-color: var(--bg-color);
+            border-radius: 16px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            /* Increased padding globally to remove clunkiness and give breathing room */
+            padding: 80px 100px 120px 100px; 
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease;
+            background-color: var(--bg-color);
+        }
+
+        .slide.active {
+            opacity: 1;
+            visibility: visible;
+            z-index: 10;
+        }
+
+        /* NAVIGATION CONTROLS */
+        .nav-controls {
+            position: absolute;
+            bottom: 40px;
+            right: 80px;
+            z-index: 100;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .nav-btn {
+            background-color: var(--primary);
+            color: var(--white);
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: var(--transition);
+            box-shadow: 0 4px 10px rgba(99, 140, 128, 0.2);
+        }
+
+        .nav-btn:hover { background-color: var(--text-dark); transform: scale(1.05); }
+        .nav-btn:disabled { background-color: var(--secondary); cursor: not-allowed; box-shadow: none; opacity: 0.7; transform: none; }
+
+        .slide-counter { 
+            font-family: 'Poppins', sans-serif; 
+            font-size: 24px; 
+            font-weight: 800; 
+            color: var(--text-dark); 
+            margin-right: 15px; 
+            letter-spacing: 1px;
+        }
+
+        .progress-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 6px;
+            background-color: var(--primary);
+            transition: width 0.3s ease;
+            z-index: 100;
+        }
+
+        /* TYPOGRAPHY (Scaled slightly for elegance) */
+        h1, h2, h3, h4 { font-family: 'Poppins', sans-serif; margin: 0; color: var(--primary); }
+        h1 { font-size: 64px; font-weight: 800; line-height: 1.1; text-transform: uppercase; }
+        
+        .slide-title-container { display: flex; align-items: center; margin-bottom: 25px; }
+        .slide-title-accent { width: 6px; height: 35px; background-color: var(--secondary); margin-right: 20px; }
+        .slide-title { font-size: 36px; font-weight: 800; text-transform: uppercase; color: var(--primary); line-height: 1; }
+        
+        .subtitle { font-size: 20px; color: var(--text-dark); margin-bottom: 40px; font-weight: 700; }
+        p { font-size: 18px; line-height: 1.6; margin: 0; color: var(--text-dark); }
+
+        /* INTERACTIVE ELEMENTS */
+        .clickable { cursor: pointer; transition: var(--transition); }
+        .clickable:hover { transform: scale(1.02); }
+        
+        .btn {
+            background-color: var(--primary);
+            color: var(--white);
+            padding: 16px 40px;
+            font-size: 18px;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 800;
+            border: none;
+            border-radius: 50px; 
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 8px 15px rgba(99, 140, 128, 0.2);
+            transition: var(--transition);
+        }
+        .btn:hover { background-color: var(--text-dark); transform: translateY(-2px); box-shadow: 0 12px 20px rgba(26, 38, 34, 0.3); }
+
+        /* LAYOUTS */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; width: 100%; height: 100%; align-items: center; }
+        
+        /* Smooth Modern Cards */
+        .card { background: var(--white); border-radius: 16px; padding: 40px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.04); transition: var(--transition); display: flex; flex-direction: column; align-items: center; justify-content: center; border: none; }
+
+        /* --- SPECIFIC SLIDE FIXES --- */
+
+        /* Slide 2: Rules Layout (Contained & elegant) */
+        .rules-wrapper { display: flex; width: 100%; height: 100%; background-color: var(--white); border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .rules-left-bg { width: 200px; background-color: var(--primary); display: flex; justify-content: center; align-items: center; }
+        .rules-left-bg h2 { transform: rotate(-90deg); font-size: 50px; white-space: nowrap; color: var(--white); letter-spacing: 2px; }
+        .rules-right-bg { flex: 1; padding: 50px 60px; display: flex; flex-direction: column; justify-content: center; gap: 35px; }
+        
+        .rule-row { position: relative; cursor: pointer; transition: var(--transition); display: flex; align-items: flex-start; gap: 20px; }
+        .rule-dot { width: 18px; height: 18px; border-radius: 50%; background-color: var(--primary); margin-top: 5px; flex-shrink: 0; transition: var(--transition); }
+        .rule-row:hover .rule-dot { transform: scale(1.3); }
+        .rule-row.checked { opacity: 0.4; }
+        
+        .rule-text h3 { font-size: 20px; margin-bottom: 8px; color: var(--primary); text-transform: uppercase; letter-spacing: 1px; }
+        .rule-text p { font-size: 16px; color: var(--text-dark); opacity: 0.8; line-height: 1.5; font-weight: 400; }
+
+        /* Slide 4: Bubbles (Truth Text Box Added) */
+        .bubble-arena { position: relative; width: 100%; height: 100%; flex-grow: 1; display: flex; justify-content: center; align-items: center; }
+        .fear-bubble { position: absolute; background: var(--primary); color: var(--white); font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 18px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border-radius: 50%; box-shadow: 0 10px 20px rgba(99, 140, 128, 0.2); z-index: 2; transition: transform 0.3s ease, opacity 0.3s ease; cursor: pointer; }
+        .fear-bubble:hover { transform: scale(1.05); }
+        .fear-bubble.popped { transform: scale(0); opacity: 0; pointer-events: none; }
+        
+        .truth-text { background: var(--white); padding: 40px 60px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); border: 2px solid var(--secondary); position: absolute; text-align: center; z-index: 1; opacity: 0; transition: opacity 0.8s ease; max-width: 600px; }
+        .truth-text span.big-number { font-size: 100px; font-family: 'Poppins', sans-serif; font-weight: 800; color: var(--primary); display: block; line-height: 1; margin-bottom: 10px; }
+        .truth-text.visible { opacity: 1; z-index: 3; }
+
+        /* Slide 6: Tapper Game (No cramping) */
+        .tapper-btn { width: 180px; height: 180px; border-radius: 50%; background: var(--primary); color: var(--white); font-size: 36px; font-family: 'Poppins', sans-serif; font-weight: 800; display: flex; justify-content: center; align-items: center; border: none; cursor: pointer; box-shadow: 0 15px 35px rgba(99, 140, 128, 0.3); transition: transform 0.1s; margin: 0 auto; }
+        .tapper-btn:active { transform: scale(0.95); }
+        .tapper-card { background: var(--white); border-radius: 16px; padding: 30px; text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.03); margin-bottom: 20px; }
+
+        /* Slide 7: Feeder Buttons */
+        .feeder-btn { width: 100%; max-width: 450px; padding: 16px 20px; font-size: 18px; font-family: 'Lato', sans-serif; font-weight: 400; border: 1px solid #ccc; background: #f4f4f4; color: var(--text-dark); margin: 0 auto 15px auto; border-radius: 6px; cursor: pointer; transition: var(--transition); text-align: center; display: block; }
+        .feeder-btn:hover { background: #e0e0e0; border-color: #999; }
+
+        /* Slide 8: So What Filter (UI Fix - Nesting Container) */
+        .filter-container { position: relative; width: 600px; height: 320px; margin: 0 auto; }
+        .layer-box { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; border-radius: 16px; padding: 40px; transition: transform 0.5s ease-in-out, opacity 0.4s; box-shadow: 0 15px 35px rgba(0,0,0,0.08); cursor: pointer; border: none; }
+        .layer-1 { background: var(--text-dark); color: var(--bg-color); z-index: 3; }
+        .layer-2 { background: var(--secondary); color: var(--text-dark); z-index: 2; }
+        .layer-3 { background: var(--primary); color: var(--bg-color); z-index: 1; }
+        .peeled { transform: translateY(30px); opacity: 0; pointer-events: none; }
+
+        /* Slide 9: Flashlight/Scratch Game */
+        .scratch-pad { position: relative; width: 100%; height: 300px; background: var(--primary); border-radius: 20px; overflow: hidden; display: flex; justify-content: center; align-items: center; padding: 40px; text-align: center; cursor: crosshair; }
+        .scratch-fog { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--secondary); z-index: 2; display: flex; justify-content: center; align-items: center; font-size: 24px; font-family: 'Poppins'; font-weight: 600; color: var(--text-dark); transition: opacity 0.3s; pointer-events: none; }
+
+        /* Slide 10: Bar Chart Layout */
+        .bar-container { margin-bottom: 30px; width: 100%; }
+        .bar-label { display: flex; justify-content: space-between; margin-bottom: 8px; padding: 0 5px; }
+        .bar-title { font-size: 20px; font-family: 'Poppins', sans-serif; font-weight: 800; color: var(--text-dark); }
+        .bar-value { font-size: 18px; font-weight: 700; color: var(--text-dark); }
+        .bar-track { width: 100%; height: 30px; background: var(--secondary); border-radius: 15px; overflow: hidden; }
+        .bar-fill { height: 100%; background: var(--primary); transition: width 1s cubic-bezier(0.2, 0.8, 0.2, 1); width: 0%; border-radius: 15px; }
+
+        /* Slide 11: Blemish Effect */
+        .blemish-quote { background: var(--primary); color: var(--white); padding: 20px 30px; border-radius: 12px; font-size: 24px; font-weight: 800; font-family: 'Poppins', sans-serif; display: inline-block; margin: 20px 0; }
+        .trust-meter-wrapper { width: 100%; margin-top: 10px; }
+        .trust-meter-label { font-size: 14px; font-family: 'Poppins', sans-serif; font-weight: 800; text-transform: uppercase; color: var(--text-dark); margin-bottom: 8px; display: block; }
+        .trust-meter-track { width: 100%; height: 40px; background: transparent; border-radius: 20px; border: 2px solid var(--primary); overflow: hidden; position: relative; }
+        .trust-meter-fill { width: 10%; height: 100%; background: var(--primary); display: flex; align-items: center; padding-left: 15px; color: var(--white); font-weight: 800; font-size: 18px; font-family: 'Lato', sans-serif; transition: width 1s ease-in-out; border-radius: 0; white-space: nowrap; }
+
+        /* Slide 12: Pratfall Effect (Fixed Coffee Visual) */
+        .pratfall-card { background: var(--white); border-radius: 16px; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.04); text-align: center; position: relative; }
+        .coffee-spill { position: absolute; top: 30px; right: 40px; color: #8B4513; opacity: 0; transition: all 0.5s ease; }
+        .pratfall-bar-track { width: 100%; height: 40px; background: var(--secondary); border-radius: 20px; overflow: hidden; margin-bottom: 25px; }
+        .pratfall-bar-fill { width: 40%; height: 100%; background: var(--primary); display: flex; align-items: center; padding-left: 15px; color: var(--white); font-weight: 800; font-size: 16px; font-family: 'Lato', sans-serif; transition: width 1s ease; border-radius: 20px; white-space: nowrap; }
+
+        /* Slide 13: Proof Spinner Game */
+        .slot-container { display: flex; justify-content: center; gap: 15px; margin-top: 40px; margin-bottom: 40px; }
+        .slot { width: 100px; height: 140px; background: var(--white); border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); display: flex; justify-content: center; align-items: center; font-size: 60px; font-family: 'Poppins', sans-serif; font-weight: 800; color: var(--text-dark); }
+        .slot-punctuation { font-size: 60px; font-family: 'Poppins', sans-serif; font-weight: 800; color: var(--primary); display: flex; align-items: flex-end; padding-bottom: 5px; }
+
+        /* Slide 15: Action List (Flexbox fix) */
+        .action-item { background: var(--white); padding: 20px 25px; border-radius: 12px; margin-bottom: 12px; font-size: 18px; font-weight: 600; display: flex; align-items: flex-start; gap: 15px; cursor: pointer; transition: var(--transition); box-shadow: 0 4px 10px rgba(0,0,0,0.02); }
+        .action-item i { font-size: 22px; color: var(--secondary); transition: var(--transition); flex-shrink: 0; margin-top: 2px; }
+        .action-item.done { background-color: #f0f7f4; color: var(--primary); box-shadow: none; }
+        .action-item.done i { color: var(--primary); }
+
+        /* Decorative Background */
+        .bg-shape { position: absolute; border-radius: 50%; background: var(--secondary); opacity: 0.3; z-index: 0; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <div class="deck-container">
+        
+        <div class="progress-bar" id="progressBar" style="width: 0%;"></div>
+        
+        <div class="nav-controls">
+            <span class="slide-counter" id="slideCounter">1 / 16</span>
+            <button class="nav-btn" onclick="prevSlide()" id="btnPrev" disabled><i class="fas fa-chevron-left"></i></button>
+            <button class="nav-btn" onclick="nextSlide()" id="btnNext"><i class="fas fa-chevron-right"></i></button>
+        </div>
+
+        <!-- SLIDE 1: COVER -->
+        <div class="slide active" id="s1">
+            <div class="bg-shape" style="width: 600px; height: 600px; top: -150px; right: -150px;"></div>
+            <div style="z-index: 1; display: flex; flex-direction: column; justify-content: center; height: 100%; text-align: left;">
+                <div style="font-size: 20px; font-weight: 800; color: var(--primary); letter-spacing: 10px; margin-bottom: 20px;">ROSHED</div>
+                <h1>Magnetic<br>Messaging</h1>
+                <p style="font-size: 24px; color: var(--text-dark); margin-top: 20px; max-width: 700px; font-weight: 400;">How to Talk About What You Do So People Want to Buy.</p>
+                <div style="margin-top: 40px;">
+                    <button class="btn" onclick="nextSlide()">PRESS START <i class="fas fa-play" style="margin-left: 10px; font-size: 14px;"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 2: RULES -->
+        <div class="slide" id="s2">
+            <div class="rules-wrapper">
+                <div class="rules-left-bg">
+                    <h2>Community Rules</h2>
+                </div>
+                <div class="rules-right-bg">
+                    <div class="rule-row" onclick="this.classList.toggle('checked')">
+                        <div class="rule-dot"></div>
+                        <div class="rule-text">
+                            <h3>Be Open, It's A Safe Space</h3>
+                            <p>Participate in questionnaires, answer us in the chat, talk about yourself and never worry about being judged.</p>
+                        </div>
+                    </div>
+                    <div class="rule-row" onclick="this.classList.toggle('checked')">
+                        <div class="rule-dot"></div>
+                        <div class="rule-text">
+                            <h3>Have Your Camera Open</h3>
+                            <p>If possible, always have your camera on. It makes a huge difference because we can see your face!</p>
+                        </div>
+                    </div>
+                    <div class="rule-row" onclick="this.classList.toggle('checked')">
+                        <div class="rule-dot"></div>
+                        <div class="rule-text">
+                            <h3>Do The Assignments</h3>
+                            <p>We designed assignments with specific goals. Skipping assignments takes all the fun out of our journey together!</p>
+                        </div>
+                    </div>
+                    <div class="rule-row" onclick="this.classList.toggle('checked')">
+                        <div class="rule-dot"></div>
+                        <div class="rule-text">
+                            <h3>Ask And You Shall Receive!</h3>
+                            <p>Ask your questions, and participate in the community, book challenges and in the group.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 3: ROADMAP -->
+        <div class="slide" id="s3">
+            <div class="slide-title-container">
+                <div class="slide-title-accent"></div>
+                <h2 class="slide-title" style="border: none; padding: 0; margin: 0;">The Roadmap</h2>
+            </div>
+            <p class="subtitle">CLICK the nodes to reveal the path.</p>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; position: relative; margin-top: 80px; padding: 0 40px;">
+                <div style="position: absolute; top: 35px; left: 40px; width: calc(100% - 80px); height: 4px; background: var(--secondary); z-index: 1;"></div>
+                
+                <div style="z-index: 2; text-align: center; width: 180px;">
+                    <div class="clickable" style="width: 70px; height: 70px; background: var(--bg-color); border: 4px solid var(--secondary); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; color: var(--secondary); margin: 0 auto; transition: all 0.3s;" onclick="this.style.borderColor='var(--primary)'; this.style.backgroundColor='var(--primary)'; this.style.color='var(--bg-color)'; this.innerHTML='<i class=\'fas fa-ban\'></i>'; document.getElementById('rt1').style.color='var(--primary)';">1</div>
+                    <h3 id="rt1" style="margin-top: 15px; color: var(--secondary); font-size: 18px; transition: 0.3s;">The Resistance</h3>
+                </div>
+                <div style="z-index: 2; text-align: center; width: 180px;">
+                    <div class="clickable" style="width: 70px; height: 70px; background: var(--bg-color); border: 4px solid var(--secondary); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; color: var(--secondary); margin: 0 auto; transition: all 0.3s;" onclick="this.style.borderColor='var(--primary)'; this.style.backgroundColor='var(--primary)'; this.style.color='var(--bg-color)'; this.innerHTML='<i class=\'fas fa-stethoscope\'></i>'; document.getElementById('rt2').style.color='var(--primary)';">2</div>
+                    <h3 id="rt2" style="margin-top: 15px; color: var(--secondary); font-size: 18px; transition: 0.3s;">The Diagnosis</h3>
+                </div>
+                <div style="z-index: 2; text-align: center; width: 180px;">
+                    <div class="clickable" style="width: 70px; height: 70px; background: var(--bg-color); border: 4px solid var(--secondary); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; color: var(--secondary); margin: 0 auto; transition: all 0.3s;" onclick="this.style.borderColor='var(--primary)'; this.style.backgroundColor='var(--primary)'; this.style.color='var(--bg-color)'; this.innerHTML='<i class=\'fas fa-random\'></i>'; document.getElementById('rt3').style.color='var(--primary)';">3</div>
+                    <h3 id="rt3" style="margin-top: 15px; color: var(--secondary); font-size: 18px; transition: 0.3s;">The Reframe</h3>
+                </div>
+                <div style="z-index: 2; text-align: center; width: 180px;">
+                    <div class="clickable" style="width: 70px; height: 70px; background: var(--bg-color); border: 4px solid var(--secondary); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; color: var(--secondary); margin: 0 auto; transition: all 0.3s;" onclick="this.style.borderColor='var(--primary)'; this.style.backgroundColor='var(--primary)'; this.style.color='var(--bg-color)'; this.innerHTML='<i class=\'fas fa-magic\'></i>'; document.getElementById('rt4').style.color='var(--primary)';">4</div>
+                    <h3 id="rt4" style="margin-top: 15px; color: var(--secondary); font-size: 18px; transition: 0.3s;">The Catalyst</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 4: RESISTANCE (Bubbles & Fixed Box) -->
+        <div class="slide" id="s4">
+            <div class="slide-title-container">
+                <div class="slide-title-accent"></div>
+                <h2 class="slide-title" style="border: none; padding: 0; margin: 0;">The Silence Paradox</h2>
+            </div>
+            <p class="subtitle" style="margin-top: -20px;">CLICK the fears to pop them and reveal the truth.</p>
+            
+            <div class="bubble-arena">
+                <!-- Properly boxed Truth Text -->
+                <div class="truth-text" id="truthTextSlide4">
+                    <span class="big-number">90%</span>
+                    <p style="font-size: 22px; font-weight: 700; color: var(--text-dark);">of our time is spent worrying about how we look.</p>
+                    <p style="font-size: 18px; font-weight: 400; color: var(--text-dark); margin-top: 10px;">While 99% of the world isn't even looking.</p>
+                </div>
+                
+                <!-- Bubbles -->
+                <div class="fear-bubble" style="width: 160px; height: 160px; top: 10%; left: 20%;" onclick="popFear(this)">"I'll sound<br>Salesy!"</div>
+                <div class="fear-bubble" style="width: 190px; height: 190px; top: 30%; right: 40%;" onclick="popFear(this)">Imposter<br>Syndrome</div>
+                <div class="fear-bubble" style="width: 140px; height: 140px; bottom: 15%; right: 20%;" onclick="popFear(this)">"It's not<br>Perfect!"</div>
+            </div>
+        </div>
+
+        <!-- SLIDE 5: MANDATE -->
+        <div class="slide" id="s5">
+            <div class="slide-title-container">
+                <div class="slide-title-accent"></div>
+                <h2 class="slide-title" style="border: none; padding: 0; margin: 0;">The Visibility Mandate</h2>
+            </div>
+            <p class="subtitle" style="margin-top: -20px;">CLICK the block to reveal the harsh truth about staying silent.</p>
+            
+            <div style="position: relative; width: 100%; height: 300px; background: var(--white); border-radius: 16px; display: flex; justify-content: center; align-items: center; text-align: center; padding: 40px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.04);">
+                <div>
+                    <h1 style="color: var(--text-dark); font-size: 40px;">It's a DISSERVICE.</h1>
+                    <p style="font-size: 20px; margin-top: 15px;">If you solve a problem, staying quiet is withholding a cure from someone in pain.</p>
+                </div>
+                <div class="clickable" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary); color: var(--white); display: flex; justify-content: center; align-items: center; font-size: 24px; font-family: 'Poppins'; font-weight: 800; z-index: 2; transition: transform 0.6s cubic-bezier(0.8, 0, 0.2, 1);" onclick="this.style.transform='translateY(-100%)'">
+                    <i class="fas fa-eye-slash" style="margin-right: 15px;"></i> REVEAL TRUTH
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 6: CURSE -->
+        <div class="slide" id="s6">
+            <div class="slide-title-container">
+                <div class="slide-title-accent"></div>
+                <h2 class="slide-title" style="border: none; padding: 0; margin: 0;">The Curse of Knowledge</h2>
+            </div>
+            <p class="subtitle" style="margin-top: -20px;">Stanford "Tappers" Study. CLICK the button to tap the song in your head.</p>
+            
+            <div class="grid-2">
+                <div style="display: flex; justify-content: center; align-items: center;">
+                    <button class="tapper-btn" id="tapBtn" onclick="playTap()">TAP</button>
+                </div>
+                <div style="display: flex; flex-direction: column; justify-content: center;">
+                    <div class="tapper-card">
+                        <h3 style="font-size: 20px; color: var(--text-dark); margin-bottom: 5px;">What YOU hear:</h3>
+                        <div id="orchestraIcons" style="font-size: 26px; color: var(--primary); height: 35px; display: flex; justify-content: center; align-items: center; gap: 8px;"></div>
+                        <div style="font-size: 36px; color: var(--text-dark); font-weight: 800; line-height: 1;">100%</div>
+                    </div>
+                    <div class="tapper-card">
+                        <h3 style="font-size: 20px; color: var(--text-dark); margin-bottom: 5px;">What THEY guess:</h3>
+                        <div id="tapScore" style="font-size: 36px; color: var(--primary); font-weight: 800; opacity: 0; transition: opacity 0.5s; line-height: 1; margin-top: 10px;">2.5%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 7: BIOLOGY -->
+        <div class="slide" id="s7">
+            <div class="slide-title-container">
+                <div class="slide-title-accent"></div>
+                <h2 class="slide-title" style="border: none; padding: 0; margin: 0;">The Amygdala Gatekeeper</h2>
+            </div>
+            <p class="subtitle" style="margin-top: -20px;">The brain deletes complex info to save calories. CLICK to feed it.</p>
+            
+            <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; padding-bottom: 40px;">
+                <div style="margin-bottom: 30px; text-align: center;">
+                    <i id="brainIcon" class="fas fa-brain" style="font-size: 120px; color: var(--secondary); transition: var(--transition);"></i>
+                    <h3 id="brainMsg" style="margin-top: 20px; font-size: 22px; color: var(--text-dark); font-weight: 700;">Waiting for input...</h3>
+                </div>
+                <div style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+                    <button class="feeder-btn" onclick="feedBrain('bad')">Feed Complex Jargon</button>
+                    <button class="feeder-btn" onclick="feedBrain('good')">Feed Simple Meaning</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 8: RELEVANCE (Fixed nested layers UI Fail) -->
+        <div class="slide" id="s8">
+            <div class="slide-title-container">
+                <div class="slide-title-accent"></div>
+                <h2 class="slide-title" style="border: none; padding: 0; margin: 0;">The "So What?" Filter</h2>
+            </div>
+            <p class="subtitle" style="margin-top: -20px;">CLICK the top layer to peel it back and find the true human meaning.</p>
+            
+            <div class="filter-container">
+                <div class="layer-box layer-3">
+                    <h3 style="font-size: 28px; color: var(--white);">Meaning</h3>
+                    <p style="font-size: 20px; margin-top: 10px; color: var(--white);">"You stop stressing about where your next client is coming from."</p>
+                    <i class="fas fa-sun" style="font-size: 35px; margin-top: 15px; color: var(--white);"></i>
+                </div>
+                <div class="layer-box layer-2 clickable" onclick="this.classList.add('peeled')">
+                    <h3 style="font-size: 28px;">Benefit</h3>
+                    <p style="font-size: 20px; margin-top: 10px;">"We rank you on Page 1 of Google."</p>
+                    <div style="margin-top: 20px; font-weight: 800; color: var(--primary); font-size: 16px;">CLICK: SO WHAT? <i class="fas fa-level-down-alt"></i></div>
+                </div>
+                <div class="layer-box layer-1 clickable" onclick="this.classList.add('peeled')">
+                    <h3 style="font-size: 28px; color: var(--white);">Feature</h3>
+                    <p style="font-size: 20px; margin-top: 10px; color: var(--secondary);">"SEO Optimization Service."</p>
+                    <div style="margin-top: 20px; font-weight: 800; color: var(--primary); font-size: 16px;">CLICK: SO WHAT? <i class="fas fa-level-down-alt"></i></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 9: HOOK -->
+        <div class="slide" id="s9">
+            <div class="slide-title-container">
+                <div class="slide-title-accent"></div>
+                <h2 class="slide-title" style="border: none; padding: 0; margin: 0;">The Curiosity Gap</h2>
+            </div>
+            <p class="subtitle" style="margin-top: -20px;">HOVER over the box to shine a flashlight on the mystery.</p>
+            
+            <div class="scratch-pad" id="scratchPad" onmousemove="updateFlashlight(event)">
+                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); display: flex; justify-content: center; align-items: center; z-index: 3; clip-path: circle(0px at 0px 0px); -webkit-clip-path: circle(0px at 0px 0px);" id="hiddenTextLayer">
+                    <div style="font-size: 28px; font-family: 'Poppins', sans-serif; font-weight: 600; color: var(--text-dark); width: 85%; text-align: center; line-height: 1.5;">
+                        "There is a hidden leak in your customer journey that most businesses miss. <br><br><span style="color: var(--primary); font-weight: 800;">Do you know where it is?</span>"
+                    </div>
+                </div>
+                <div class="scratch-fog" id="fogLayer">
+                    <i class="fas fa-search" style="margin-right: 15px;"></i> HOVER TO REVEAL THE HOOK
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 10: VALUE (Fixed label overlaps) -->
+        <div class="slide" id="s10">
+            <div class="slide-title-container">
+                <div class="slide-title-accent"></div>
+                <h2 class="slide-title" style="border: none; padding: 0; margin: 0;">Anchoring & Contrast</h2>
+            </div>
+            <p class="subtitle" style="margin-top: -20px;">CLICK "Add Context" to see how perceived value changes.</p>
+            
+            <div style="width: 100%; max-width: 800px; margin: 30px auto 0 auto;">
+                
+                <div class="bar-container">
+                    <div class="bar-label">
+                        <span class="bar-title">Your Solution</span>
+                        <span class="bar-value">$10,000</span>
+                    </div>
+                    <div class="bar-track">
+                        <div class="bar-fill" style="width: 10%;"></div>
+                    </div>
+                </div>
+                
+                <div class="bar-container">
+                    <div class="bar-label">
+                        <span class="bar-title">Cost of Inaction</span>
+                        <span class="bar-value" id="costLabelValue"></span>
+                    </div>
+                    <div class="bar-track">
+                        <div class="bar-fill" id="costBar" style="background: var(--text-dark);"></div>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 40px;">
+                    <button class="btn" onclick="animateBar()">ADD CONTEXT</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 11: BLEMISH EFFECT -->
+        <div class="slide" id="s11">
+            <div class="slide-title-container">
+                <div class="slide-title-accent"></div>
+                <h2 class="slide-title" style="border: none; padding: 0; margin: 0;">The Blemish Effect</h2>
+            </div>
+            <p class="subtitle" style="margin-top: -20px;">Perfection triggers "Scam". CLICK the perfect shield to crack it and build trust.</p>
+            
+            <div class="grid-2" style="align-items: flex-start; margin-top: 20px;">
+                <div style="display: flex; justify-content: center; align-items: center; height: 100%;">
+                    <div class="clickable" id="shieldIcon" style="font-size: 200px; color: var(--text-dark); transition: transform 0.3s;" onclick="crackShield()">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                </div>
+                <div style="display: flex; flex-direction: column; justify-content: center; padding-right: 20px;">
+                    <p style="font-size: 16px; color: var(--text-dark); margin-bottom: 10px; font-weight: 700;">
+                        The Blemish Effect: Admitting a small flaw increases your credibility.
+                    </p>
+                    
+                    <div id="blemishContainer" style="opacity: 0; transform: translateY(10px); transition: all 0.5s;">
+                        <div class="blemish-quote">"We aren't the cheapest."</div>
+                    </div>
+                    
+                    <div class="trust-meter-wrapper">
+                        <span class="trust-meter-label">Customer Trust Level:</span>
+                        <div class="trust-meter-track">
+                            <div id="trustFill" class="trust-meter-fill">10% SKEPTICAL</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 12: PRATFALL EFFECT (Fixed Coffee visual) -->
+        <div class="slide" id="s12">
+            <div class="slide-title-container">
+                <div class="slide-title-accent"></div>
+                <h2 class="slide-title" style="border: none; padding: 0; margin: 0;">The Pratfall Effect</h2>
+            </div>
+            <p class="subtitle" style="margin-top: -20px;">Highly competent people become more likable when they make a small mistake.</p>
+            
+            <div class="grid-2" style="gap: 40px; margin-top: 20px;">
+                <div class="pratfall-card">
+                    <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 20px; position: relative;">
+                        <i class="fas fa-user-tie" style="font-size: 70px; color: var(--primary);"></i>
+                        
+                        <!-- Clean Coffee Visual via FontAwesome -->
+                        <div class="coffee-spill" id="coffeeSpill">
+                            <i class="fas fa-mug-hot"></i>
+                            <i class="fas fa-tint" style="position: absolute; top: 35px; left: 15px; font-size: 18px;"></i>
+                            <i class="fas fa-tint" style="position: absolute; top: 40px; left: -5px; font-size: 12px;"></i>
+                        </div>
+                    </div>
+                    
+                    <h3 style="font-size: 22px; margin-bottom: 10px; color: var(--primary);">Perfect Expert</h3>
+                    <p style="font-size: 14px; color: var(--text-dark); margin-bottom: 30px;">Flawless presentation, zero mistakes, slightly intimidating.</p>
+                    
+                    <button class="btn" style="padding: 10px 20px; font-size: 14px;" onclick="spillCoffee()">SPILL COFFEE (MAKE MISTAKE)</button>
+                </div>
+                
+                <div style="display: flex; flex-direction: column; justify-content: center;">
+                    <div style="font-size: 14px; font-weight: 800; margin-bottom: 10px; color: var(--text-dark); text-transform: uppercase;">Likability & Relatability:</div>
+                    <div class="pratfall-bar-track">
+                        <div id="likabilityFill" class="pratfall-bar-fill">40% INTIMIDATING</div>
+                    </div>
+                    <p id="pratfallText" style="margin-top: 20px; font-size: 16px; line-height: 1.5; opacity: 0; transition: opacity 0.5s;">
+                        A small, relatable mistake proves you are human, making your established competence much more magnetic and less threatening.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 13: PROOF -->
+        <div class="slide" id="s13">
+            <div class="slide-title-container">
+                <div class="slide-title-accent"></div>
+                <h2 class="slide-title" style="border: none; padding: 0; margin: 0;">Social Proof Specificity</h2>
+            </div>
+            <p class="subtitle" style="margin-top: -20px;">Don't round up or down. Decimals = Data. CLICK to give actual data.</p>
+            
+            <div class="slot-container">
+                <div class="slot" id="slot1">0</div>
+                <div class="slot" id="slot2">0</div>
+                <div class="slot-punctuation">.</div>
+                <div class="slot" id="slot3">0</div>
+                <div class="slot-punctuation" style="margin-left: -5px;">%</div>
+            </div>
+            
+            <div style="text-align: center;">
+                <button class="btn" id="spinBtn" onclick="spinSlots()">GIVE ACTUAL DATA <i class="fas fa-sync" style="margin-left: 10px; font-size: 16px;"></i></button>
+            </div>
+        </div>
+
+        <!-- SLIDE 14: INVITATION -->
+        <div class="slide" id="s14">
+            <div class="slide-title-container">
+                <div class="slide-title-accent"></div>
+                <h2 class="slide-title" style="border: none; padding: 0; margin: 0;">The Low-Stakes Invitation</h2>
+            </div>
+            <p class="subtitle" style="margin-top: -20px;">CLICK to open a door. Don't ask for marriage on the first date.</p>
+            
+            <div style="display: flex; justify-content: center; gap: 50px; height: 300px; margin-top: 30px;">
+                <!-- Door 1 -->
+                <div style="position: relative; width: 260px; height: 100%; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.06);">
+                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--secondary); display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 20px; color: var(--text-dark); z-index: 1;">
+                        <i class="fas fa-times" style="font-size: 40px; color: var(--text-dark); margin-bottom: 15px;"></i>Too soon!
+                    </div>
+                    <div class="clickable" style="position: absolute; width: 100%; height: 100%; background: var(--text-dark); color: var(--white); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 2; transition: transform 0.6s; transform-origin: left;" onclick="this.style.transform='rotateY(-105deg)'">
+                        <i class="fas fa-ring" style="font-size: 40px; margin-bottom: 20px;"></i>
+                        <h3 style="color: var(--white); font-size: 20px;">Direct CTA</h3>
+                        <p style="color: var(--secondary); font-size: 14px; margin-top: 10px;">"Book a Sales Call"</p>
+                    </div>
+                </div>
+                
+                <!-- Door 2 -->
+                <div style="position: relative; width: 260px; height: 100%; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.06);">
+                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary); display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 20px; color: var(--white); z-index: 1;">
+                        <i class="fas fa-check" style="font-size: 40px; color: var(--white); margin-bottom: 15px;"></i>Safe Entry
+                    </div>
+                    <div class="clickable" style="position: absolute; width: 100%; height: 100%; background: var(--primary); color: var(--white); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 2; transition: transform 0.6s; transform-origin: left; border: 2px solid var(--white);" onclick="this.style.transform='rotateY(-105deg)'">
+                        <i class="fas fa-gift" style="font-size: 40px; margin-bottom: 20px;"></i>
+                        <h3 style="color: var(--white); font-size: 20px;">Transitional CTA</h3>
+                        <p style="color: var(--white); font-size: 14px; margin-top: 10px;">"Grab the Freebie"</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 15: ACTION -->
+        <div class="slide" id="s15">
+            <div class="slide-title-container">
+                <div class="slide-title-accent"></div>
+                <h2 class="slide-title" style="border: none; padding: 0; margin: 0;">Monday Morning Plan</h2>
+            </div>
+            <p class="subtitle" style="margin-top: -20px;">CLICK each item to commit to your Magnetic Action Plan.</p>
+            
+            <div style="display: flex; flex-direction: column; width: 100%; max-width: 800px; margin: 0 auto; gap: 12px;">
+                <div class="action-item" onclick="toggleTask(this)">
+                    <i class="far fa-circle"></i>
+                    <span>Audit "About" Page (Switch to Guide Framework)</span>
+                </div>
+                <div class="action-item" onclick="toggleTask(this)">
+                    <i class="far fa-circle"></i>
+                    <span>Apply "So What?" Test to Top 3 Services</span>
+                </div>
+                <div class="action-item" onclick="toggleTask(this)">
+                    <i class="far fa-circle"></i>
+                    <span>Create 1 Freebie (Checklist/Audit)</span>
+                </div>
+                <div class="action-item" onclick="toggleTask(this)">
+                    <i class="far fa-circle"></i>
+                    <span>Post 1 "Curiosity Gap" Hook on Social Media</span>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;" id="finalMessage">
+                <p style="font-weight: 600; color: var(--secondary); font-size: 16px;">Complete the checklist to finish.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // NAVIGATION LOGIC
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length; 
+        let currentSlide = 0;
+        
+        const btnPrev = document.getElementById('btnPrev');
+        const btnNext = document.getElementById('btnNext');
+        const slideCounter = document.getElementById('slideCounter');
+        const progressBar = document.getElementById('progressBar');
+
+        function updateUI() {
+            slides.forEach((s, i) => {
+                if(i === currentSlide) {
+                    s.classList.add('active');
+                } else {
+                    s.classList.remove('active');
+                }
+            });
+
+            btnPrev.disabled = currentSlide === 0;
+            btnNext.disabled = currentSlide === totalSlides - 1;
+            slideCounter.innerText = `${currentSlide + 1} / ${totalSlides}`;
+            progressBar.style.width = `${((currentSlide) / (totalSlides - 1)) * 100}%`;
+        }
+
+        function nextSlide() {
+            if(currentSlide < totalSlides - 1) {
+                currentSlide++;
+                updateUI();
+            }
+        }
+
+        function prevSlide() {
+            if(currentSlide > 0) {
+                currentSlide--;
+                updateUI();
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if(e.key === 'ArrowRight' || e.key === 'Space') nextSlide();
+            if(e.key === 'ArrowLeft') prevSlide();
+        });
+
+        // S4: Bubbles
+        let poppedFears = 0;
+        function popFear(el) {
+            el.classList.add('popped');
+            poppedFears++;
+            if(poppedFears === 3) {
+                document.getElementById('truthTextSlide4').classList.add('visible');
+            }
+        }
+
+        // S6: Tapper
+        let taps = 0;
+        const icons = ['fa-music', 'fa-drum', 'fa-guitar', 'fa-compact-disc'];
+        function playTap() {
+            taps++;
+            const btn = document.getElementById('tapBtn');
+            btn.style.transform = 'scale(0.95)';
+            setTimeout(() => btn.style.transform = 'none', 100);
+
+            let orch = document.getElementById('orchestraIcons');
+            if(taps < 6) {
+                let i = document.createElement('i');
+                i.className = `fas ${icons[taps%icons.length]}`;
+                i.style.margin = '0 4px';
+                orch.appendChild(i);
+            }
+            if(taps >= 5) {
+                document.getElementById('tapScore').style.opacity = '1';
+            }
+        }
+
+        // S7: Brain
+        function feedBrain(type) {
+            const icon = document.getElementById('brainIcon');
+            const msg = document.getElementById('brainMsg');
+            if(type === 'bad') {
+                icon.className = 'fas fa-times-circle';
+                icon.style.color = 'var(--text-dark)';
+                msg.innerText = 'REJECTED: Too Many Calories';
+                msg.style.color = 'var(--text-dark)';
+            } else {
+                icon.className = 'fas fa-check-circle';
+                icon.style.color = 'var(--primary)';
+                msg.innerText = 'ACCEPTED: Easy to Process';
+                msg.style.color = 'var(--primary)';
+            }
+        }
+
+        // S9: Flashlight
+        function updateFlashlight(e) {
+            const pad = document.getElementById('scratchPad');
+            const hidden = document.getElementById('hiddenTextLayer');
+            const fog = document.getElementById('fogLayer');
+            const rect = pad.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            fog.style.opacity = '0.1';
+            hidden.style.clipPath = `circle(180px at ${x}px ${y}px)`;
+            hidden.style.webkitClipPath = `circle(180px at ${x}px ${y}px)`;
+        }
+
+        // S10: Value
+        function animateBar() {
+            const bar = document.getElementById('costBar');
+            const label = document.getElementById('costLabelValue');
+            
+            bar.style.width = '100%';
+            bar.style.backgroundColor = 'var(--primary)';
+            label.innerText = '$100,000 / Year';
+        }
+
+        // S11: Trust (Blemish Effect)
+        function crackShield() {
+            const shield = document.getElementById('shieldIcon');
+            shield.innerHTML = '<i class="fas fa-shield-virus"></i>';
+            shield.style.color = 'var(--text-dark)';
+            shield.style.transform = 'scale(1.05)';
+            
+            const bMsg = document.getElementById('blemishContainer');
+            bMsg.style.opacity = '1';
+            bMsg.style.transform = 'translateY(0)';
+            
+            const fill = document.getElementById('trustFill');
+            fill.style.width = '100%';
+            fill.innerText = '100% BELIEVABLE';
+        }
+
+        // S12: Pratfall Effect
+        function spillCoffee() {
+            const spill = document.getElementById('coffeeSpill');
+            spill.style.opacity = '1';
+            spill.style.transform = 'rotate(110deg) translateY(15px)';
+            
+            const fill = document.getElementById('likabilityFill');
+            fill.style.width = '95%';
+            fill.innerText = '95% LIKABLE & HUMAN';
+            
+            document.getElementById('pratfallText').style.opacity = '1';
+        }
+
+        // S13: Proof
+        let isSpinning = false;
+        function spinSlots() {
+            if(isSpinning) return;
+            isSpinning = true;
+            const s1 = document.getElementById('slot1');
+            const s2 = document.getElementById('slot2');
+            const s3 = document.getElementById('slot3');
+            const btn = document.getElementById('spinBtn');
+            
+            let count = 0;
+            const interval = setInterval(() => {
+                s1.innerText = Math.floor(Math.random() * 10);
+                s2.innerText = Math.floor(Math.random() * 10);
+                s3.innerText = Math.floor(Math.random() * 10);
+                count++;
+                if(count > 20) {
+                    clearInterval(interval);
+                    s1.innerText = '8';
+                    s2.innerText = '4';
+                    s3.innerText = '2';
+                    s1.style.color = 'var(--primary)';
+                    s2.style.color = 'var(--primary)';
+                    s3.style.color = 'var(--primary)';
+                    btn.innerText = 'ACTUAL DATA SHOWN';
+                    btn.style.backgroundColor = 'var(--text-dark)';
+                }
+            }, 50);
+        }
+
+        // S15: Tasks
+        let tasksDone = 0;
+        function toggleTask(el) {
+            const icon = el.querySelector('i');
+            if(!el.classList.contains('done')) {
+                el.classList.add('done');
+                icon.className = 'fas fa-check-circle';
+                tasksDone++;
+            } else {
+                el.classList.remove('done');
+                icon.className = 'far fa-circle';
+                tasksDone--;
+            }
+            if(tasksDone === 4) {
+                document.getElementById('finalMessage').innerHTML = '<p style="font-weight: 800; color: var(--primary); font-size: 22px;">YOU ARE MAGNETIC. <i class="fas fa-star" style="color: #f1c40f; margin-left: 5px;"></i></p>';
+            } else {
+                document.getElementById('finalMessage').innerHTML = '<p style="font-weight: 600; color: var(--secondary); font-size: 16px;">Complete the checklist to finish.</p>';
+            }
+        }
+
+        // Initialize
+        updateUI();
+
+    </script>
+</body>
+</html>
